@@ -1,0 +1,377 @@
+<!-- Chosen Palette: Classic Blue/Slate (Human-Centric) -->
+<!-- Application Structure Plan: Maintained the dual-panel (Input/Preview) structure for usability. The Preview is simplified to a classic, two-column header design: Contact/Title on the left, and a dedicated Photo slot on the right. The content sections (Summary, Experience, Skills, Education) are streamlined and presented with simpler headings and less aggressive typography, promoting ease of reading and a clean aesthetic typical of human-designed resumes. -->
+<!-- Visualization & Content Choices: The application uses only HTML/CSS/JS for structured text. The Photo URL input is replaced by an <input type="file"> element connected to the FileReader API in JavaScript. This converts the local image file into a Base64 data string, which is then dynamically rendered in the resume header, solving the previous issue with local paths and external link failures. Content bullet points are maintained but the overall structure is minimal. NO SVG graphics used. NO Mermaid JS used. -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Resume Builder</title>
+
+    <!-- PASTE YOUR GOOGLE ADSENSE AUTO ADS CODE HERE -->
+    <!-- It usually looks like a <script> tag provided by AdSense. -->
+    <!-- Example: <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0000000000000000" crossorigin="anonymous"></script> -->
+    
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        #resume-preview {
+            background-color: white;
+            min-height: 29.7cm;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+        .input-field:focus {
+            border-color: #3b82f6; /* Classic Blue focus */
+        }
+        .section-heading-output {
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: #1e293b;
+            border-bottom: 2px solid #3b82f6; /* Classic Blue underline */
+            padding-bottom: 0.25rem;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.02em;
+        }
+        @media print {
+            #input-panel, #print-button {
+                display: none;
+            }
+            #app-container {
+                display: block;
+            }
+            #resume-preview {
+                margin: 0;
+                box-shadow: none;
+                min-height: 100vh;
+                width: 100%;
+                max-width: none !important;
+                padding: 1.5cm !important;
+            }
+            .resume-photo {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            /* Crucial: Hides ads when printing, ensuring a clean resume PDF */
+            .ad-container {
+                display: none;
+            }
+        }
+        /* Style for the ad placement container */
+        .ad-container {
+            margin: 1rem auto;
+            max-width: 728px;
+            text-align: center;
+            height: 90px;
+            background-color: #f0f4f8; /* Light gray background to denote ad space */
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 0.875rem;
+            border: 1px dashed #cbd5e1;
+        }
+        @media (max-width: 768px) {
+            .ad-container {
+                height: 50px;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container" class="min-h-screen p-4 md:p-8 flex flex-col md:flex-row gap-8">
+
+    <div id="input-panel" class="w-full md:w-1/3 bg-white p-6 rounded-xl shadow-xl h-full sticky top-8 overflow-y-auto max-h-[95vh]">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2 text-blue-600">Resume Builder</h1>
+
+        <!-- Photo & Personal Information -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold text-slate-700 mb-3 border-b pb-1">1. Photo & Contact Info</h2>
+            
+            <label for="photo-file-input" class="block text-sm font-medium text-gray-700 mb-2">Upload Photo from Device:</label>
+            <input type="file" id="photo-file-input" accept="image/*" class="input-field p-2" onchange="handlePhotoUpload(event)">
+            <p class="text-xs text-gray-500 mb-4">Select an image file (e.g., .jpg or .png) from your computer. No external linking is needed!</p>
+            
+            <input type="text" id="name" placeholder="Full Name" class="input-field" oninput="updateResume()">
+            <input type="text" id="title" placeholder="Professional Title (e.g., Marketing Specialist)" class="input-field" oninput="updateResume()">
+            <input type="email" id="email" placeholder="Email Address" class="input-field" oninput="updateResume()">
+            <input type="text" id="phone" placeholder="Phone Number" class="input-field" oninput="updateResume()">
+            <input type="text" id="linkedin" placeholder="LinkedIn URL" class="input-field" oninput="updateResume()">
+            <input type="text" id="portfolio" placeholder="Portfolio/GitHub URL" class="input-field" oninput="updateResume()">
+        </div>
+
+        <!-- Summary -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold text-slate-700 mb-3 border-b pb-1">2. Professional Summary</h2>
+            <textarea id="summary" placeholder="A brief, 3-4 sentence summary of who you are and what you aim to achieve." rows="3" class="input-field" oninput="updateResume()"></textarea>
+        </div>
+
+        <!-- Skills -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold text-slate-700 mb-3 border-b pb-1">3. Core Skills</h2>
+            <textarea id="skills-list" placeholder="List key skills, separated by commas (e.g., SEO, Python, Project Management, Figma)" rows="2" class="input-field" oninput="updateResume()"></textarea>
+        </div>
+
+        <!-- Experience (Max 2 for simplicity) -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold text-slate-700 mb-3 border-b pb-1">4. Work Experience (Max 2)</h2>
+            
+            <h3 class="font-medium mt-4 mb-2 text-blue-600">Position 1 (Current/Most Recent)</h3>
+            <input type="text" id="job1-title" placeholder="Job Title" class="input-field" oninput="updateResume()">
+            <input type="text" id="job1-company" placeholder="Company Name" class="input-field" oninput="updateResume()">
+            <input type="text" id="job1-dates" placeholder="Dates (e.g., Jan 2022 - Present)" class="input-field" oninput="updateResume()">
+            <textarea id="job1-desc" placeholder="3-4 bullet points describing your role and achievements. Separate bullets with a newline." rows="4" class="input-field" oninput="updateResume()"></textarea>
+
+            <h3 class="font-medium mt-4 mb-2 text-blue-600">Position 2</h3>
+            <input type="text" id="job2-title" placeholder="Job Title" class="input-field" oninput="updateResume()">
+            <input type="text" id="job2-company" placeholder="Company Name" class="input-field" oninput="updateResume()">
+            <input type="text" id="job2-dates" placeholder="Dates" class="input-field" oninput="updateResume()">
+            <textarea id="job2-desc" placeholder="3-4 bullet points describing your role and achievements. Separate bullets with a newline." rows="4" class="input-field" oninput="updateResume()"></textarea>
+        </div>
+        
+        <!-- Key Projects -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold text-slate-700 mb-3 border-b pb-1">5. Key Project (Optional)</h2>
+            <input type="text" id="proj1-name" placeholder="Project Name | Key Tools Used" class="input-field" oninput="updateResume()">
+            <textarea id="proj1-desc" placeholder="1-2 sentences describing the project, its purpose, and the outcome." rows="2" class="input-field" oninput="updateResume()"></textarea>
+        </div>
+
+        <!-- Education -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold text-slate-700 mb-3 border-b pb-1">6. Education</h2>
+            <input type="text" id="edu-degree" placeholder="Degree/Certification" class="input-field" oninput="updateResume()">
+            <input type="text" id="edu-institution" placeholder="Institution Name" class="input-field" oninput="updateResume()">
+            <input type="text" id="edu-dates" placeholder="Graduation Date (e.g., May 2019)" class="input-field" oninput="updateResume()">
+        </div>
+
+        <button id="print-button" onclick="window.print()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition duration-200 shadow-lg">
+            Print/Save as PDF
+        </button>
+    </div>
+
+    <!-- 2. Resume Preview (Right Side - Dynamic Display) -->
+    <div class="w-full md:w-2/3 max-w-4xl mx-auto">
+        <!-- Ad Placeholder above the resume -->
+        <div class="ad-container">
+            Advertisement (Powered by AdSense)
+        </div>
+
+        <div id="resume-preview" class="p-4 md:p-10 rounded-xl">
+            <div class="text-center py-10 text-gray-400 italic">
+                Start typing in the input fields on the left to see your professional resume appear here!
+            </div>
+        </div>
+
+        <!-- Ad Placeholder below the resume -->
+        <div class="ad-container">
+            Advertisement (Powered by AdSense)
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const val = (id) => document.getElementById(id).value.trim();
+    let photoBase64 = ''; 
+
+    function handlePhotoUpload(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            photoBase64 = '';
+            updateResume();
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            photoBase64 = e.target.result;
+            updateResume();
+        };
+        reader.onerror = function() {
+            photoBase64 = '';
+            updateResume();
+        };
+        reader.readAsDataURL(file); 
+    }
+
+    function updateResume() {
+        const preview = document.getElementById('resume-preview');
+        
+        const name = val('name');
+        const title = val('title');
+        const email = val('email');
+        const phone = val('phone');
+        const linkedin = val('linkedin');
+        const portfolio = val('portfolio');
+        const summary = val('summary');
+        const skillsList = val('skills-list');
+
+        const jobs = [1, 2].map(i => ({
+            title: val(`job${i}-title`),
+            company: val(`job${i}-company`),
+            dates: val(`job${i}-dates`),
+            desc: val(`job${i}-desc`).split('\n').filter(line => line.trim())
+        })).filter(job => job.title);
+
+        const project = {
+            name: val('proj1-name'),
+            desc: val('proj1-desc')
+        };
+
+        const education = {
+            degree: val('edu-degree'),
+            institution: val('edu-institution'),
+            dates: val('edu-dates')
+        };
+        
+        if (!name && !summary && jobs.length === 0 && !education.degree && !photoBase64) {
+            preview.innerHTML = `<div class="text-center py-10 text-gray-400 italic">Start typing in the input fields on the left to see your professional resume appear here!</div>`;
+            return;
+        }
+
+        let contactItems = [];
+        if (email) contactItems.push(email);
+        if (phone) contactItems.push(phone);
+        if (linkedin) contactItems.push(`<a href="${linkedin}" target="_blank" class="text-blue-600 hover:underline">${linkedin}</a>`);
+        if (portfolio) contactItems.push(`<a href="${portfolio}" target="_blank" class="text-blue-600 hover:underline">${portfolio}</a>`);
+
+        const contactHtml = contactItems.join(`<span class="mx-2 text-gray-500">&#x2022;</span>`);
+        
+        const photoSrc = photoBase64 || '';
+        const photoHtml = photoBase64 ? `
+            <img 
+                src="${photoSrc}" 
+                alt="${name}'s Photo" 
+                class="w-24 h-24 object-cover rounded-full shadow-md ml-6 border-2 border-gray-200 resume-photo"
+            >
+        ` : '';
+
+        const experienceHtml = jobs.map(job => `
+            <div class="mt-2">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-bold text-base text-gray-900">${job.title}</h4>
+                        <p class="italic text-gray-700 mb-1">${job.company}</p>
+                    </div>
+                    <span class="text-sm text-gray-600">${job.dates}</span>
+                </div>
+                <ul class="list-disc ml-5 text-gray-800">
+                    ${job.desc.map(line => `<li class="mb-1 text-sm">${line.trim()}</li>`).join('')}
+                </ul>
+            </div>
+        `).join('<div class="h-px bg-gray-200 my-4"></div>');
+        
+        preview.innerHTML = `
+            <!-- HEADER (Name, Title, Contact, Photo) -->
+            <header class="flex justify-between items-center mb-6 pb-3 border-b-2 border-slate-300">
+                <div class="flex-grow">
+                    <h1 class="text-3xl font-extrabold text-gray-900 mb-1">${name || 'Full Name'}</h1>
+                    <p class="text-xl font-medium text-blue-600 mb-3">${title || 'Professional Title'}</p>
+                    <div class="text-xs text-gray-600 flex flex-wrap">
+                        ${contactHtml}
+                    </div>
+                </div>
+                ${photoHtml}
+            </header>
+
+            <!-- PROFESSIONAL SUMMARY -->
+            ${summary ? `
+                <section class="mb-5">
+                    <h3 class="section-heading-output">Summary</h3>
+                    <p class="text-gray-800 leading-relaxed text-sm">${summary}</p>
+                </section>
+            ` : ''}
+            
+            <!-- CORE SKILLS -->
+            ${skillsList ? `
+                <section class="mb-5">
+                    <h3 class="section-heading-output">Core Skills</h3>
+                    <p class="text-sm text-gray-800">${skillsList}</p>
+                </section>
+            ` : ''}
+
+            <!-- EXPERIENCE -->
+            ${experienceHtml ? `
+                <section class="mb-5">
+                    <h3 class="section-heading-output">Experience</h3>
+                    ${experienceHtml}
+                </section>
+            ` : ''}
+            
+            <!-- KEY PROJECT -->
+            ${project.name ? `
+                <section class="mb-5">
+                    <h3 class="section-heading-output">Key Project</h3>
+                    <div class="mt-2">
+                        <h4 class="font-bold text-base text-gray-900">${project.name}</h4>
+                        <p class="text-gray-800 text-sm leading-snug">${project.desc}</p>
+                    </div>
+                </section>
+            ` : ''}
+
+            <!-- EDUCATION -->
+            ${education.degree ? `
+                <section class="mb-5">
+                    <h3 class="section-heading-output">Education</h3>
+                    <div class="flex justify-between items-center mt-3 text-sm">
+                        <div>
+                            <h4 class="font-bold text-base text-gray-900">${education.degree}</h4>
+                            <p class="italic text-gray-700">${education.institution}</p>
+                        </div>
+                        <span class="text-sm text-gray-600">${education.dates}</span>
+                    </div>
+                </section>
+            ` : ''}
+        `;
+    }
+
+    window.onload = function() {
+        document.getElementById('name').value = 'Jane R. Doe';
+        document.getElementById('title').value = 'Creative Marketing Specialist';
+        document.getElementById('email').value = 'jane.doe@work.com';
+        document.getElementById('phone').value = '(555) 555-1234';
+        document.getElementById('linkedin').value = 'linkedin.com/in/janedoe';
+        document.getElementById('portfolio').value = 'janedoedesigns.com';
+        document.getElementById('summary').value = 'A passionate and results-driven marketing professional with 4 years of experience specializing in digital content and social media strategy. Proven ability to elevate brand awareness and drive tangible customer engagement. Seeking to contribute creative expertise to a growing team.';
+        document.getElementById('skills-list').value = 'Social Media Management, Adobe Creative Suite, Content Strategy, SEO/SEM Basics, Google Analytics, Copywriting';
+        
+        document.getElementById('job1-title').value = 'Digital Content Manager';
+        document.getElementById('job1-company').value = 'Brand Launch Agency';
+        document.getElementById('job1-dates').value = 'Jan 2022 – Present';
+        document.getElementById('job1-desc').value = 'Increased Instagram engagement by 45% over 12 months by launching a new video content series.\nManaged and executed all email marketing campaigns, resulting in a 15% growth in newsletter subscribers.\nCollaborated with sales team to develop collateral, shortening the average sales cycle by two days.';
+        
+        document.getElementById('job2-title').value = 'Marketing Assistant';
+        document.getElementById('job2-company').value = 'Local Retail Corp';
+        document.getElementById('job2-dates').value = 'Aug 2020 – Dec 2021';
+        document.getElementById('job2-desc').value = 'Coordinated all in-store promotional materials and ensured brand consistency across five regional locations.\nAssisted in organizing three major product launch events, managing vendor relations and logistics.\nHeld responsibility for maintaining the company\'s website content via a basic CMS.';
+
+        document.getElementById('proj1-name').value = 'E-Commerce Redesign Concept | Figma, Photoshop';
+        document.getElementById('proj1-desc').value = 'Developed a high-fidelity prototype for a conceptual e-commerce store, focusing on improved mobile user experience and simplified checkout flow.';
+
+        document.getElementById('edu-degree').value = 'B.A. in Communications';
+        document.getElementById('edu-institution').value = 'State University';
+        document.getElementById('edu-dates').value = 'May 2020';
+
+        updateResume();
+    };
+
+</script>
+
+</body>
+</html>
